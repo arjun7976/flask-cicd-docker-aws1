@@ -2,21 +2,24 @@ name: Deploy Flask to EC2
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main  # या आप अपनी default branch का नाम दें
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+    - name: Add EC2 Host to known_hosts
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
     - name: Deploy & Run on EC2
@@ -26,8 +29,8 @@ jobs:
           docker stop flaskapp || true
           docker rm flaskapp || true
           docker rmi flask-cicd-docker || true
-          rm -rf flask-cicd-docker-aws || true
-          git clone git@github.com:arjun7976/flask-cicd-docker-aws1.git
+          rm -rf flask-cicd-docker-aws1 || true
+          git clone https://github.com/arjun7976/flask-cicd-docker-aws1.git
           cd flask-cicd-docker-aws1
           docker build -t flask-cicd-docker .
           docker run -d -p 80:5000 --name flaskapp flask-cicd-docker
