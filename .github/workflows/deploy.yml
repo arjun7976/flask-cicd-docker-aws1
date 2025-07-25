@@ -1,0 +1,32 @@
+name: Deploy Flask to EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2
+      run: |
+        ssh ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
+        docker stop flaskapp || true
+        docker rm flaskapp || true
+        docker rmi flask-cicd-docker || true
+        git clone https://github.com/your-username/flask-cicd-docker-aws.git || true
+        cd flask-cicd-docker-aws
+        docker build -t flask-cicd-docker .
+        docker run -d -p 80:5000 --name flaskapp flask-cicd-docker
+        EOF
