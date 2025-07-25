@@ -9,24 +9,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    - name: Checkout GitHub Action Code (Optional)
       uses: actions/checkout@v3
 
-    - name: Set up SSH
+    - name: Set up SSH Connection
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Deploy to EC2
+    - name: Deploy & Run on EC2
       run: |
         ssh ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
-        docker stop flaskapp || true
-        docker rm flaskapp || true
-        docker rmi flask-cicd-docker || true
-        git clone https://github.com/your-username/flask-cicd-docker-aws.git || true
-        cd flask-cicd-docker-aws
-        docker build -t flask-cicd-docker .
-        docker run -d -p 80:5000 --name flaskapp flask-cicd-docker
+          set -e
+          # Clean up previous container/image
+          docker stop flaskapp || true
+          docker rm flaskapp || true
+          docker rmi flask-cicd-docker || true
+
+          # Clone fresh repo (use SSH instead of HTTPS)
+          rm -rf flask-cicd-docker-aws
+          git clone git@github.com:your-username/flask-cicd-docker-aws.git
+
+          cd flask-cicd-docker-aws
+
+          # Build and run Docker
+          docker build -t flask-cicd-docker .
+          docker run -d -p 80:5000 --name flaskapp flask-cicd-docker
         EOF
